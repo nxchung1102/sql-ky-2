@@ -1,0 +1,68 @@
+﻿USE QLDA 
+GO
+
+
+SELECT TENNV,'tang luong'=IIF(a.LUONG > b.luongtb , 'khong tang luon','tang luong') 
+FROM dbo.NHANVIEN a JOIN (SELECT PHG,AVG(LUONG) luongtb FROM dbo.NHANVIEN 
+GROUP BY PHG) b ON b.PHG = a.PHG
+
+SELECT TENNV,'tang luong'=IIF(a.LUONG > b.luongtb , 'truong phong','nhan vien') 
+FROM dbo.NHANVIEN a JOIN (SELECT PHG,AVG(LUONG) luongtb FROM dbo.NHANVIEN 
+GROUP BY PHG) b ON b.PHG = a.PHG
+
+SELECT  IIF(PHAI = N'nam','mr.','ms.')+TENNV FROM dbo.NHANVIEN
+
+SELECT TENNV, LUONG, 'thue' = 
+CASE 
+WHEN LUONG >  0 AND LUONG <25000 THEN LUONG*.1
+WHEN LUONG BETWEEN 25000 AND 30000 THEN LUONG *0.12
+WHEN LUONG BETWEEN 30000 AND 40000 THEN LUONG *0.15
+WHEN LUONG BETWEEN 40000 AND 50000 THEN LUONG *0.2
+ELSE LUONG*0.25 END
+FROM dbo.NHANVIEN
+--bai2
+DECLARE @max INT ,@i INT
+SET @i = 1
+SELECT @max = MAX(CAST(MANV AS INT)) FROM dbo.NHANVIEN
+WHILE (@i <= @max) 
+BEGIN
+IF @i = 4 BEGIN SET @i += 1  CONTINUE END
+IF @i %2 = 0
+ SELECT  MANV, TENNV FROM dbo.NHANVIEN
+ WHERE CAST(MANV AS INT)  = @i  AND CAST(MANV AS INT) NOT LIKE 4
+ SET @i += 1
+END
+-- bai 3
+
+BEGIN TRY 
+INSERT INTO dbo.PHONGBAN
+(
+    TENPHG,
+    MAPHG,
+    TRPHG,
+    NG_NHANCHUC
+)
+VALUES
+(   N'khoa học',      -- TENPHG - nvarchar(15)
+    6,        -- MAPHG - int
+    N'007',      -- TRPHG - nvarchar(9)
+   '1990-10-12' -- NG_NHANCHUC - date
+    )
+	PRINT 'success'
+END TRY 
+BEGIN CATCH
+ PRINT 'failed'
+END CATCH
+-- 
+
+BEGIN TRY 
+DECLARE @chia INT 
+SET @chia = 5/0
+END TRY 
+BEGIN CATCH 
+DECLARE @errorMs NVARCHAR(2048),@errors INT , @errorSt INT 
+SELECT @errorMs = ERROR_MESSAGE(),@errors=ERROR_SEVERITY(),@errorSt=ERROR_STATE()
+RAISERROR(@errorMs,@errors,@errorSt)
+END CATCH
+
+

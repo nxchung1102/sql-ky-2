@@ -1,0 +1,193 @@
+﻿CREATE DATABASE QLNS;
+GO
+USE QLNS;
+GO
+CREATE TABLE COSO
+(
+    MACS VARCHAR(10) PRIMARY KEY NOT NULL,
+    TENCS NVARCHAR(30)
+);
+CREATE TABLE CONGNHAN
+(
+    ID VARCHAR(10) PRIMARY KEY NOT NULL,
+    HOTEN NVARCHAR(30) NOT NULL,
+    GIOITINH NVARCHAR(5),
+    DCHI NVARCHAR(30),
+    LONG MONEY,
+    MACS VARCHAR(10)
+        REFERENCES dbo.COSO (MACS)
+);
+CREATE TABLE NGUOIPHUTHUOC
+(
+    ID VARCHAR(10) NOT NULL
+        REFERENCES dbo.CONGNHAN (ID),
+    MACS VARCHAR(10) NOT NULL
+        REFERENCES dbo.COSO (MACS),
+    SOLUONG INT,
+    NGAYDK DATE,
+    PRIMARY KEY (
+                    ID,
+                    MACS
+                )
+);
+
+IF OBJECT_ID('sp_iics') IS NOT NULL
+    DROP PROC sp_iics;
+GO
+CREATE PROC sp_iics
+    @MACS VARCHAR(10) = NULL,
+    @TENCS NVARCHAR(30) = NULL
+AS
+BEGIN
+    BEGIN TRY
+        IF @MACS IS NULL
+            PRINT ERROR_MESSAGE();
+        ELSE
+        BEGIN
+            INSERT INTO dbo.COSO
+            VALUES
+            (@MACS, @TENCS);
+        END;
+        PRINT 'success';
+    END TRY
+    BEGIN CATCH
+        PRINT ERROR_MESSAGE();
+    END CATCH;
+END;
+GO
+
+IF OBJECT_ID('sp_iicn') IS NOT NULL
+    DROP PROC sp_iicn;
+GO
+CREATE PROC sp_iicn
+    @ID VARCHAR(10) = NULL,
+    @HOTEN NVARCHAR(30) = NULL,
+    @GIOITINH NVARCHAR(5) = NULL,
+    @DCHI NVARCHAR(30) = NULL,
+    @LONG MONEY = NULL,
+    @MACS VARCHAR(10) = NULL
+AS
+BEGIN
+    BEGIN TRY
+        IF @HOTEN IS NULL
+           OR @ID IS NULL
+            PRINT ERROR_MESSAGE();
+        ELSE
+        BEGIN
+            INSERT INTO dbo.CONGNHAN
+            VALUES
+            (@ID, @HOTEN, @GIOITINH, @DCHI, @LONG, @MACS);
+        END;
+        PRINT 'success';
+    END TRY
+    BEGIN CATCH
+        PRINT ERROR_MESSAGE();
+    END CATCH;
+END;
+GO
+
+IF OBJECT_ID('sp_iinpt') IS NOT NULL
+    DROP PROC sp_iinpt;
+GO
+CREATE PROC sp_iinpt
+    @ID VARCHAR(10) = NULL,
+    @MACS VARCHAR(10) = NULL,
+    @SOLUONG INT = NULL,
+    @NGAYDK DATE = NULL
+AS
+BEGIN
+    BEGIN TRY
+        IF @MACS IS NULL
+           OR @ID IS NULL
+            PRINT ERROR_MESSAGE();
+        ELSE
+        BEGIN
+            INSERT INTO dbo.NGUOIPHUTHUOC
+            VALUES
+            (@ID, @MACS, @SOLUONG, @NGAYDK);
+        END;
+        PRINT 'success';
+    END TRY
+    BEGIN CATCH
+        PRINT ERROR_MESSAGE();
+    END CATCH;
+END;
+GO
+ 
+ EXEC dbo.sp_iics 'CS1',N'Công ty nhựa'
+ EXEC dbo.sp_iics 'CS2',N'Công ty vải'
+ EXEC dbo.sp_iics 'CS3',N'Công ty sắt'
+ GO
+ EXEC dbo.sp_iicn	'CN5',N'Chung',N'nam',N'hà nội',1000,'CS1'
+  EXEC dbo.sp_iicn	'CN6',N'lan',N'nữ',N'hà nội',800,'CS2'
+   EXEC dbo.sp_iicn	'CN2',N'hoàng',N'nam',N'hà nam',600,'CS3'
+ GO
+ EXEC dbo.sp_iinpt 'CN1', 'CS1',3,'2022-10-03'
+  EXEC dbo.sp_iinpt 'CN3', 'CS2',5,'2022-01-08'
+   EXEC dbo.sp_iinpt 'CN2', 'CS3',2,'2022-03-03'
+   --2
+   IF OBJECT_ID('fc_cn') IS NOT NULL
+   DROP FUNCTION fc_cn
+   GO
+   CREATE FUNCTION fc_cn
+(
+       @HOTEN NVARCHAR(30)  ,
+    @GIOITINH NVARCHAR(5)  ,
+    @DCHI NVARCHAR(30)  ,
+    @LONG MONEY  ,
+    @MACS VARCHAR(10)
+)
+ RETURNS TABLE 
+ AS
+ RETURN SELECT ID FROM dbo.CONGNHAN WHERE HOTEN LIKE @HOTEN 
+ AND GIOITINH LIKE @GIOITINH
+ AND DCHI LIKE @DCHI
+ AND LONG = @LONG
+ AND MACS LIKE @MACS
+GO
+SELECT * FROM dbo.fc_cn(N'lan',N'nữ',N'hà nội',800,'CS2')
+    
+ --3
+ IF OBJECT_ID('vw_top2') IS NOT NULL
+ DROP VIEW vw_top2
+ GO
+ CREATE VIEW vw_top2 AS
+ SELECT TOP 2 COSO.MACS,TENCS, SOLUONG FROM dbo.COSO JOIN dbo.NGUOIPHUTHUOC ON NGUOIPHUTHUOC.MACS = COSO.MACS
+ GROUP BY COSO.MACS,
+          TENCS, SOLUONG
+		  ORDER BY SOLUONG DESC
+		  go
+          SELECT * FROM dbo.vw_top2
+
+ --SELECT COSO.MACS,TENCS,COUNT(ID) FROM dbo.COSO JOIN dbo.CONGNHAN ON CONGNHAN.MACS = COSO.MACS
+ --WHERE COSO.MACS = dbo.CONGNHAN.MACS 
+ --GROUP BY COSO.MACS,
+ --         TENCS
+
+
+	--	  SELECT COUNT(*),MACS FROM dbo.CONGNHAN
+	--	  GROUP BY MACS
+
+	--5
+	IF OBJECT_ID('sp_del') IS NOT NULL
+	DROP PROC sp_del
+	GO
+    CREATE PROC sp_del
+	@NGAYKT DATE
+	AS
+	BEGIN
+	    BEGIN TRY 
+		BEGIN TRAN
+	DECLARE @ngay INT
+	SELECT @ngay = DATEDIFF(DAY,GETDATE(),@NGAYKT)
+	DELETE FROM dbo.NGUOIPHUTHUOC WHERE @ngay > 365
+	DELETE FROM dbo.CONGNHAN WHERE @ngay > 365
+		COMMIT TRAN
+		PRINT 'success'
+		END TRY 
+		BEGIN CATCH
+		PRINT ERROR_MESSAGE()
+		ROLLBACK TRAN
+		END CATCH
+	END
+
